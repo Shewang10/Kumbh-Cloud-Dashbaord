@@ -1,4 +1,4 @@
-name = "cleanfleet-command-center"
+name = "kumbh-cloud-dashbaord"
 main = "worker/index.ts"
 compatibility_date = "2024-09-23"
 compatibility_flags = ["nodejs_compat"]
@@ -11,7 +11,7 @@ not_found_handling = "single-page-application"
 [[d1_databases]]
 binding = "DB"
 database_name = "cleanfleet-d1"
-database_id = "cleanfleet-d1-id"
+database_id = "cf139961-dc6e-4ad7-a2bd-65e3468138fb"
 migrations_dir = "migrations"
 
 [vars]
