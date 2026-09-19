@@ -35,9 +35,25 @@ export const MapLibre3D: React.FC<MapLibre3DProps> = ({
   const markerRef = useRef<maplibregl.Marker | null>(null);
   const waypointMarkersRef = useRef<maplibregl.Marker[]>([]);
 
+  const onMapClickRef = useRef(onMapClick);
+  useEffect(() => {
+    onMapClickRef.current = onMapClick;
+  }, [onMapClick]);
+
   const [followVehicle, setFollowVehicle] = useState<boolean>(true);
   const [is3DMode, setIs3DMode] = useState<boolean>(true);
   const [mapLoaded, setMapLoaded] = useState<boolean>(false);
+
+  // Update canvas cursor based on selectionMode
+  useEffect(() => {
+    if (!mapRef.current) return;
+    const canvas = mapRef.current.getCanvas();
+    if (selectionMode) {
+      canvas.style.cursor = 'crosshair';
+    } else {
+      canvas.style.cursor = '';
+    }
+  }, [selectionMode]);
 
   // Initialize MapLibre GL
   useEffect(() => {
@@ -185,8 +201,8 @@ export const MapLibre3D: React.FC<MapLibre3DProps> = ({
 
     // Map Click Handler for Route Point Selection
     map.on('click', (e) => {
-      if (onMapClick) {
-        onMapClick({ lat: e.lngLat.lat, lng: e.lngLat.lng });
+      if (onMapClickRef.current) {
+        onMapClickRef.current({ lat: e.lngLat.lat, lng: e.lngLat.lng });
       }
     });
 
@@ -474,14 +490,6 @@ export const MapLibre3D: React.FC<MapLibre3DProps> = ({
           <span>RECENTER</span>
         </button>
       </div>
-
-      {/* Selection Mode Notice */}
-      {selectionMode && (
-        <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-20 bg-cyan-950/90 text-cyan-300 border border-cyan-500/80 px-4 py-2 rounded-full text-xs font-bold tracking-wider uppercase shadow-cyan-glow backdrop-blur-md animate-pulse flex items-center gap-2">
-          <Navigation size={14} className="animate-spin text-cyan-400" />
-          <span>CLICK MAP TO SET POINT {selectionMode}</span>
-        </div>
-      )}
     </div>
   );
 };

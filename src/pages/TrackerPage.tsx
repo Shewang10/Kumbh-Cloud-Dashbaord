@@ -124,13 +124,22 @@ export const TrackerPage: React.FC = () => {
                   </span>
                   <span className="text-sm font-black tracking-wider text-emerald-400">GPS ACTIVE</span>
                 </div>
-                <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                  TRANSMITTING
-                </span>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
+                    BG KEEP-ALIVE
+                  </span>
+                  <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                    LIVE
+                  </span>
+                </div>
               </div>
               <p className="mt-1 text-xs text-slate-400 font-mono">
                 {syncMessage || 'Broadcasting coordinates to Cloudflare edge'}
               </p>
+              <div className="mt-2 pt-2 border-t border-emerald-900/40 flex items-center justify-between text-[10px] font-mono text-emerald-300/80">
+                <span>SCREEN WAKE LOCK: ACTIVE</span>
+                <span>AUDIO KEEP-ALIVE: ON</span>
+              </div>
             </div>
           )}
 

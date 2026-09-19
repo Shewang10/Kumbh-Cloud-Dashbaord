@@ -199,6 +199,12 @@ export const DashboardPage: React.FC = () => {
     return () => clearInterval(timer);
   }, [dashboardState]);
 
+  // Handle starting map selection for Point A, B, or C
+  const handleStartMapSelection = (point: 'A' | 'B' | 'C') => {
+    setIsRouteModalOpen(false);
+    setSelectionMode(point);
+  };
+
   // Handle map click when selecting points for route creation
   const handleMapClick = (coords: { lat: number; lng: number }) => {
     if (!selectionMode) return;
@@ -586,6 +592,84 @@ export const DashboardPage: React.FC = () => {
         </div>
       </div>
 
+      {/* Floating Interactive Pinpoint Banner during Map Selection */}
+      {selectionMode && (
+        <div className="absolute top-6 left-1/2 transform -translate-x-1/2 z-40 flex items-center gap-4 px-6 py-3.5 rounded-2xl bg-slate-950/95 border-2 border-cyan-400 shadow-cyan-glow backdrop-blur-xl animate-fadeIn">
+          <div className="flex items-center gap-3">
+            <span className="relative flex h-3.5 w-3.5">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-cyan-500"></span>
+            </span>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-black tracking-wider text-cyan-300 font-mono uppercase">
+                  CLICK MAP TO PLACE POINT {selectionMode}
+                </span>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-400 border border-cyan-500/30">
+                  {selectionMode === 'A' ? 'ORIGIN' : selectionMode === 'B' ? 'WAYPOINT / TURN' : 'DESTINATION'}
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-300">
+                Click anywhere on the roads to drop this pin.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-1.5 ml-2">
+            <button
+              type="button"
+              onClick={() => setSelectionMode('A')}
+              className={`px-2 py-1 rounded text-[10px] font-mono font-bold border transition ${
+                selectionMode === 'A' ? 'bg-cyan-500 text-slate-950 border-cyan-400' : 'bg-slate-900 text-slate-400 border-slate-700'
+              }`}
+            >
+              A {pointA ? '✓' : ''}
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectionMode('B')}
+              className={`px-2 py-1 rounded text-[10px] font-mono font-bold border transition ${
+                selectionMode === 'B' ? 'bg-purple-500 text-white border-purple-400' : 'bg-slate-900 text-slate-400 border-slate-700'
+              }`}
+            >
+              B {pointB ? '✓' : ''}
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectionMode('C')}
+              className={`px-2 py-1 rounded text-[10px] font-mono font-bold border transition ${
+                selectionMode === 'C' ? 'bg-emerald-500 text-slate-950 border-emerald-400' : 'bg-slate-900 text-slate-400 border-slate-700'
+              }`}
+            >
+              C {pointC ? '✓' : ''}
+            </button>
+          </div>
+
+          <div className="flex items-center gap-2 border-l border-slate-800 pl-4 ml-2">
+            <button
+              type="button"
+              onClick={() => {
+                setSelectionMode(null);
+                setIsRouteModalOpen(true);
+              }}
+              className="px-3 py-1.5 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-slate-950 text-xs font-bold font-mono tracking-wider transition"
+            >
+              DONE / BACK TO ROUTE
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setSelectionMode(null);
+                setIsRouteModalOpen(false);
+              }}
+              className="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white text-xs font-bold font-mono transition"
+            >
+              CANCEL
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* 3. ROUTE CREATION MODAL */}
       <RouteModal
         isOpen={isRouteModalOpen}
@@ -603,6 +687,7 @@ export const DashboardPage: React.FC = () => {
         setPointA={setPointA}
         setPointB={setPointB}
         setPointC={setPointC}
+        onStartMapSelection={handleStartMapSelection}
       />
     </div>
   );

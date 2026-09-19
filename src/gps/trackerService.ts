@@ -2,6 +2,7 @@ import { GpsPoint } from '../types';
 import { enqueueGpsPoint, getQueuedGpsPoints, removeQueuedGpsPoints, getQueueCount } from '../offline/idbQueue';
 import { api } from '../api/client';
 import { CONFIG } from '../config';
+import { backgroundAudio } from './backgroundAudioKeepAlive';
 
 export interface TrackerDiagnostics {
   totalPointsCaptured: number;
@@ -13,6 +14,7 @@ export interface TrackerDiagnostics {
   batteryLevel?: number | null;
   isCharging?: boolean | null;
   connectionType?: string | null;
+  wakeLockActive?: boolean;
 }
 
 export type TrackerStatus = 'STOPPED' | 'STARTING' | 'ACTIVE' | 'OFFLINE' | 'DENIED' | 'ERROR';
@@ -36,6 +38,7 @@ class GpsTrackerService {
   private syncInProgress: boolean = false;
   private syncTimer: any = null;
   private syncMessage: string | null = null;
+  private wakeLockSentinel: any = null;
   private diagnostics: TrackerDiagnostics = {
     totalPointsCaptured: 0,
     totalPointsSynced: 0,
@@ -46,12 +49,14 @@ class GpsTrackerService {
     batteryLevel: null,
     isCharging: null,
     connectionType: null,
+    wakeLockActive: false,
   };
 
   constructor() {
     if (typeof window !== 'undefined') {
       window.addEventListener('online', () => this.handleNetworkChange(true));
       window.addEventListener('offline', () => this.handleNetworkChange(false));
+      document.addEventListener('visibilitychange', () => this.handleVisibilityChange());
       this.initBatteryDiagnostics();
       this.refreshQueueCount();
     }
@@ -81,6 +86,60 @@ class GpsTrackerService {
     this.queuedCount = await getQueueCount();
     this.notify();
     return this.queuedCount;
+  }
+
+  private async requestWakeLock() {
+    if (typeof navigator !== 'undefined' && 'wakeLock' in navigator) {
+      try {
+        this.wakeLockSentinel = await (navigator as any).wakeLock.request('screen');
+        this.diagnostics.wakeLockActive = true;
+        this.wakeLockSentinel.addEventListener('release', () => {
+          this.diagnostics.wakeLockActive = false;
+          this.notify();
+        });
+        console.log('[Tracker] Screen Wake Lock acquired');
+      } catch (err) {
+        console.warn('[Tracker] Screen Wake Lock not available:', err);
+        this.diagnostics.wakeLockActive = false;
+      }
+    }
+  }
+
+  private async releaseWakeLock() {
+    if (this.wakeLockSentinel) {
+      try {
+        await this.wakeLockSentinel.release();
+      } catch {}
+      this.wakeLockSentinel = null;
+      this.diagnostics.wakeLockActive = false;
+    }
+  }
+
+  private handleVisibilityChange() {
+    if (typeof document === 'undefined') return;
+
+    if (document.visibilityState === 'visible') {
+      console.log('[Tracker] App visible: re-syncing and refreshing location');
+      // Resume background audio context
+      backgroundAudio.resumeIfSuspended();
+
+      // Re-acquire wake lock if currently active
+      if (this.status === 'ACTIVE' || this.status === 'OFFLINE') {
+        this.requestWakeLock();
+
+        // Force an immediate GPS query so there is zero delay
+        if (typeof navigator !== 'undefined' && 'geolocation' in navigator) {
+          navigator.geolocation.getCurrentPosition(
+            (pos) => this.handleGpsSuccess(pos),
+            (err) => console.warn('[Tracker] Wakeup GPS query failed:', err),
+            { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+          );
+        }
+
+        // Flush any points saved in IndexedDB during sleep
+        this.syncQueuedPoints();
+      }
+    }
   }
 
   private async initBatteryDiagnostics() {
@@ -137,6 +196,12 @@ class GpsTrackerService {
     this.syncMessage = 'Requesting GPS satellite lock...';
     this.notify();
 
+    // 1. Keep screen awake via Wake Lock API
+    await this.requestWakeLock();
+
+    // 2. Start silent audio keep-alive to keep iOS Safari execution thread alive
+    backgroundAudio.start();
+
     try {
       if (this.isOnline) {
         await api.startTracker(CONFIG.VEHICLE_ID).catch(() => {});
@@ -147,9 +212,16 @@ class GpsTrackerService {
 
     const options: PositionOptions = {
       enableHighAccuracy: true,
-      maximumAge: 1500,
-      timeout: 12000,
+      maximumAge: 1000,
+      timeout: 10000,
     };
+
+    // Immediate fix
+    navigator.geolocation.getCurrentPosition(
+      (pos) => this.handleGpsSuccess(pos),
+      (err) => console.warn('[Tracker] Immediate GPS fix pending:', err),
+      options
+    );
 
     this.watchId = navigator.geolocation.watchPosition(
       (position) => this.handleGpsSuccess(position),
@@ -162,7 +234,7 @@ class GpsTrackerService {
       if (this.isOnline && !this.syncInProgress) {
         this.syncQueuedPoints();
       }
-    }, 10000);
+    }, 5000);
   }
 
   public async stop(): Promise<void> {
@@ -174,6 +246,10 @@ class GpsTrackerService {
       clearInterval(this.syncTimer);
       this.syncTimer = null;
     }
+
+    // Release wake lock & background audio session
+    await this.releaseWakeLock();
+    backgroundAudio.stop();
 
     this.status = 'STOPPED';
     this.syncMessage = 'Tracking stopped.';
@@ -298,9 +374,8 @@ class GpsTrackerService {
   public triggerAutoSync() {
     setTimeout(() => {
       this.syncQueuedPoints();
-    }, 1500);
+    }, 1000);
   }
 }
 
 export const trackerService = new GpsTrackerService();
-

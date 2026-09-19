@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { GpsPoint, RouteData } from '../types';
 import { api } from '../api/client';
 import { CONFIG } from '../config';
-import { MapPin, Navigation, CheckCircle2, ArrowRight, X, Loader2, Compass } from 'lucide-react';
+import { Navigation, CheckCircle2, X, Loader2, MapPin, Trash2 } from 'lucide-react';
 
 interface RouteModalProps {
   isOpen: boolean;
@@ -17,6 +17,7 @@ interface RouteModalProps {
   setPointA: (pt: { lat: number; lng: number } | null) => void;
   setPointB: (pt: { lat: number; lng: number } | null) => void;
   setPointC: (pt: { lat: number; lng: number } | null) => void;
+  onStartMapSelection: (point: 'A' | 'B' | 'C') => void;
 }
 
 export const RouteModal: React.FC<RouteModalProps> = ({
@@ -24,14 +25,15 @@ export const RouteModal: React.FC<RouteModalProps> = ({
   onClose,
   latestGps,
   onRouteCreated,
-  selectionMode,
-  setSelectionMode,
+  selectionMode: _selectionMode,
+  setSelectionMode: _setSelectionMode,
   pointA,
   pointB,
   pointC,
   setPointA,
   setPointB,
   setPointC,
+  onStartMapSelection,
 }) => {
   const [routeName, setRouteName] = useState('Metro Dispatch Corridor');
   const [isLoading, setIsLoading] = useState(false);
@@ -51,7 +53,6 @@ export const RouteModal: React.FC<RouteModalProps> = ({
     }
     setPointA({ lat: latestGps.latitude, lng: latestGps.longitude });
     setErrorMsg(null);
-    if (selectionMode === 'A') setSelectionMode(null);
   };
 
   const handleCalculatePreview = async () => {
@@ -64,7 +65,6 @@ export const RouteModal: React.FC<RouteModalProps> = ({
     setErrorMsg(null);
 
     try {
-      // Build OSRM query
       const coords: [number, number][] = [[pointA.lng, pointA.lat]];
       if (pointB) {
         coords.push([pointB.lng, pointB.lat]);
@@ -85,7 +85,6 @@ export const RouteModal: React.FC<RouteModalProps> = ({
           geojson: route.geometry,
         });
       } else {
-        // Fallback straight line
         setPreviewData({
           distanceKm: 2.5,
           durationMin: 10,
@@ -96,7 +95,7 @@ export const RouteModal: React.FC<RouteModalProps> = ({
         });
       }
     } catch (err: any) {
-      setErrorMsg(`Route service warning: Using direct corridor geometry (${err.message}).`);
+      setErrorMsg(`Route service notice: Fallback corridor geometry (${err.message}).`);
       const coords: [number, number][] = [[pointA.lng, pointA.lat]];
       if (pointB) coords.push([pointB.lng, pointB.lat]);
       coords.push([pointC.lng, pointC.lat]);
@@ -129,7 +128,6 @@ export const RouteModal: React.FC<RouteModalProps> = ({
       });
 
       onRouteCreated(newRoute);
-      setSelectionMode(null);
       onClose();
     } catch (err: any) {
       setErrorMsg(err.message || 'Failed to assign route');
@@ -139,13 +137,13 @@ export const RouteModal: React.FC<RouteModalProps> = ({
   };
 
   const formatCoord = (coord: { lat: number; lng: number } | null) => {
-    if (!coord) return 'Not selected';
+    if (!coord) return 'Not selected — Click "SELECT ON MAP" below';
     return `${coord.lat.toFixed(5)}, ${coord.lng.toFixed(5)}`;
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-      <div className="relative w-full max-w-lg bg-slate-900/95 border border-cyan-500/40 rounded-2xl shadow-2xl overflow-hidden p-6">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md">
+      <div className="relative w-full max-w-lg bg-slate-900/95 border border-cyan-500/40 rounded-2xl shadow-2xl overflow-hidden p-6 animate-fadeIn">
         {/* Header */}
         <div className="flex items-center justify-between pb-4 border-b border-slate-800">
           <div className="flex items-center gap-2">
@@ -159,10 +157,7 @@ export const RouteModal: React.FC<RouteModalProps> = ({
           </div>
           <button
             type="button"
-            onClick={() => {
-              setSelectionMode(null);
-              onClose();
-            }}
+            onClick={onClose}
             className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition"
           >
             <X size={18} />
@@ -179,7 +174,7 @@ export const RouteModal: React.FC<RouteModalProps> = ({
             value={routeName}
             onChange={(e) => setRouteName(e.target.value)}
             className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-sm text-cyan-300 focus:outline-none focus:border-cyan-500 font-mono"
-            placeholder="e.g. Mission Bay Logistics Corridor"
+            placeholder="e.g. Metro Dispatch Corridor"
           />
         </div>
 
@@ -187,16 +182,15 @@ export const RouteModal: React.FC<RouteModalProps> = ({
         <div className="mt-4 space-y-3">
           {/* Point A */}
           <div className={`p-3 rounded-xl border transition-all ${
-            selectionMode === 'A'
-              ? 'border-cyan-500 bg-cyan-950/30 shadow-cyan-glow'
-              : 'border-slate-800 bg-slate-950/50'
+            pointA ? 'border-cyan-500/80 bg-cyan-950/20' : 'border-slate-800 bg-slate-950/50'
           }`}>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="w-6 h-6 rounded-full bg-cyan-500/20 text-cyan-400 border border-cyan-500/40 text-xs font-bold flex items-center justify-center">
                   A
                 </span>
-                <span className="text-xs font-semibold text-slate-200">ORIGIN</span>
+                <span className="text-xs font-semibold text-slate-200">POINT A (ORIGIN)</span>
+                {pointA && <CheckCircle2 size={14} className="text-cyan-400" />}
               </div>
               <div className="flex gap-2">
                 <button
@@ -208,74 +202,94 @@ export const RouteModal: React.FC<RouteModalProps> = ({
                 </button>
                 <button
                   type="button"
-                  onClick={() => setSelectionMode(selectionMode === 'A' ? null : 'A')}
-                  className={`px-2 py-1 text-[10px] font-bold rounded border transition ${
-                    selectionMode === 'A'
-                      ? 'bg-cyan-500 text-black border-cyan-400'
-                      : 'bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700'
-                  }`}
+                  onClick={() => onStartMapSelection('A')}
+                  className="px-2 py-1 text-[10px] font-bold bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 rounded border border-cyan-500/50 transition flex items-center gap-1"
                 >
-                  {selectionMode === 'A' ? 'CLICKING MAP...' : 'SELECT ON MAP'}
+                  <MapPin size={11} />
+                  <span>SELECT ON MAP</span>
                 </button>
+                {pointA && (
+                  <button
+                    type="button"
+                    onClick={() => setPointA(null)}
+                    className="p-1 text-slate-500 hover:text-rose-400 transition"
+                  >
+                    <Trash2 size={12} />
+                  </button>
+                )}
               </div>
             </div>
-            <p className="mt-1 text-xs font-mono text-slate-400 truncate">{formatCoord(pointA)}</p>
+            <p className="mt-1.5 text-xs font-mono text-slate-400 truncate">{formatCoord(pointA)}</p>
           </div>
 
           {/* Point B (Optional Waypoint) */}
           <div className={`p-3 rounded-xl border transition-all ${
-            selectionMode === 'B'
-              ? 'border-purple-500 bg-purple-950/30 shadow-purple-glow'
-              : 'border-slate-800 bg-slate-950/50'
+            pointB ? 'border-purple-500/80 bg-purple-950/20' : 'border-slate-800 bg-slate-950/50'
           }`}>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="w-6 h-6 rounded-full bg-purple-500/20 text-purple-400 border border-purple-500/40 text-xs font-bold flex items-center justify-center">
                   B
                 </span>
-                <span className="text-xs font-semibold text-slate-200">WAYPOINT (OPTIONAL)</span>
+                <span className="text-xs font-semibold text-slate-200">POINT B (WAYPOINT / TURN)</span>
+                {pointB && <CheckCircle2 size={14} className="text-purple-400" />}
               </div>
-              <button
-                type="button"
-                onClick={() => setSelectionMode(selectionMode === 'B' ? null : 'B')}
-                className={`px-2 py-1 text-[10px] font-bold rounded border transition ${
-                  selectionMode === 'B'
-                    ? 'bg-purple-500 text-white border-purple-400'
-                    : 'bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700'
-                }`}
-              >
-                {selectionMode === 'B' ? 'CLICKING MAP...' : 'SELECT ON MAP'}
-              </button>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => onStartMapSelection('B')}
+                  className="px-2 py-1 text-[10px] font-bold bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 rounded border border-purple-500/50 transition flex items-center gap-1"
+                >
+                  <MapPin size={11} />
+                  <span>SELECT ON MAP</span>
+                </button>
+                {pointB && (
+                  <button
+                    type="button"
+                    onClick={() => setPointB(null)}
+                    className="p-1 text-slate-500 hover:text-rose-400 transition"
+                  >
+                    <Trash2 size={12} />
+                  </button>
+                )}
+              </div>
             </div>
-            <p className="mt-1 text-xs font-mono text-slate-400 truncate">{formatCoord(pointB)}</p>
+            <p className="mt-1.5 text-xs font-mono text-slate-400 truncate">{formatCoord(pointB)}</p>
           </div>
 
           {/* Point C */}
           <div className={`p-3 rounded-xl border transition-all ${
-            selectionMode === 'C'
-              ? 'border-emerald-500 bg-emerald-950/30 shadow-lime-glow'
-              : 'border-slate-800 bg-slate-950/50'
+            pointC ? 'border-emerald-500/80 bg-emerald-950/20' : 'border-slate-800 bg-slate-950/50'
           }`}>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="w-6 h-6 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 text-xs font-bold flex items-center justify-center">
                   C
                 </span>
-                <span className="text-xs font-semibold text-slate-200">DESTINATION</span>
+                <span className="text-xs font-semibold text-slate-200">POINT C (DESTINATION)</span>
+                {pointC && <CheckCircle2 size={14} className="text-emerald-400" />}
               </div>
-              <button
-                type="button"
-                onClick={() => setSelectionMode(selectionMode === 'C' ? null : 'C')}
-                className={`px-2 py-1 text-[10px] font-bold rounded border transition ${
-                  selectionMode === 'C'
-                    ? 'bg-emerald-500 text-black border-emerald-400'
-                    : 'bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700'
-                }`}
-              >
-                {selectionMode === 'C' ? 'CLICKING MAP...' : 'SELECT ON MAP'}
-              </button>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => onStartMapSelection('C')}
+                  className="px-2 py-1 text-[10px] font-bold bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 rounded border border-emerald-500/50 transition flex items-center gap-1"
+                >
+                  <MapPin size={11} />
+                  <span>SELECT ON MAP</span>
+                </button>
+                {pointC && (
+                  <button
+                    type="button"
+                    onClick={() => setPointC(null)}
+                    className="p-1 text-slate-500 hover:text-rose-400 transition"
+                  >
+                    <Trash2 size={12} />
+                  </button>
+                )}
+              </div>
             </div>
-            <p className="mt-1 text-xs font-mono text-slate-400 truncate">{formatCoord(pointC)}</p>
+            <p className="mt-1.5 text-xs font-mono text-slate-400 truncate">{formatCoord(pointC)}</p>
           </div>
         </div>
 
@@ -326,4 +340,3 @@ export const RouteModal: React.FC<RouteModalProps> = ({
     </div>
   );
 };
-
