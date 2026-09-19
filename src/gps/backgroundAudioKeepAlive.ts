@@ -1,48 +1,70 @@
-// Background Audio Keep-Alive for iOS Safari
-// iOS Safari suspends WebKit tabs and geolocation when the phone sleeps
-// unless an audio context or HTML5 audio playback is active.
-// This utility creates an imperceptible, silent audio loop to keep the process alive in the background.
+// Background Media Keep-Alive for iOS Safari & Mobile Browsers
+// iOS Safari suspends WebKit tabs when the device screen locks.
+// To keep GPS watchPosition and network transmission active in the background,
+// an HTML5 Audio element with an active MediaSession is used.
 
-class BackgroundAudioKeepAlive {
+class BackgroundMediaKeepAlive {
+  private audioElement: HTMLAudioElement | null = null;
   private audioCtx: AudioContext | null = null;
   private oscillator: OscillatorNode | null = null;
-  private gainNode: GainNode | null = null;
   private isRunning: boolean = false;
 
-  public start(): boolean {
+  public async start(): Promise<boolean> {
     if (this.isRunning) return true;
 
     try {
-      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
-      if (!AudioCtx) return false;
-
-      this.audioCtx = new AudioCtx();
-
-      // Create an oscillator with frequency below human threshold or near-zero gain
-      this.oscillator = this.audioCtx.createOscillator();
-      this.gainNode = this.audioCtx.createGain();
-
-      // Inaudible gain (silent)
-      this.gainNode.gain.value = 0.00001;
-
-      this.oscillator.type = 'sine';
-      this.oscillator.frequency.value = 440; // standard A4 but attenuated to silence
-
-      this.oscillator.connect(this.gainNode);
-      this.gainNode.connect(this.audioCtx.destination);
-
-      this.oscillator.start();
-      this.isRunning = true;
-
-      // Resume context if suspended
-      if (this.audioCtx.state === 'suspended') {
-        this.audioCtx.resume().catch(() => {});
+      // 1. Create native HTML5 Audio element playing looping silent audio
+      if (!this.audioElement) {
+        this.audioElement = new Audio('/silent.wav');
+        this.audioElement.loop = true;
+        this.audioElement.autoplay = true;
+        this.audioElement.setAttribute('playsinline', 'true');
+        this.audioElement.setAttribute('webkit-playsinline', 'true');
+        // Very low volume (imperceptible, but not 0 so iOS audio session stays active)
+        this.audioElement.volume = 0.01;
       }
 
-      console.log('[KeepAlive] Background audio session active');
+      await this.audioElement.play().catch((e) => {
+        console.warn('[KeepAlive] Audio element play deferred or blocked:', e);
+      });
+
+      // 2. Configure iOS Lock Screen MediaSession API
+      if (typeof navigator !== 'undefined' && 'mediaSession' in navigator) {
+        navigator.mediaSession.metadata = new MediaMetadata({
+          title: 'CleanFleet Active Trip',
+          artist: 'GPS Background Tracking Active',
+          album: 'CleanFleet Operations',
+        });
+        navigator.mediaSession.playbackState = 'playing';
+
+        navigator.mediaSession.setActionHandler('play', () => {
+          this.audioElement?.play().catch(() => {});
+        });
+        navigator.mediaSession.setActionHandler('pause', () => {
+          // Re-play to prevent accidental pause from iOS lock screen widget
+          this.audioElement?.play().catch(() => {});
+        });
+      }
+
+      // 3. Auxiliary Web Audio Context fallback
+      try {
+        const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+        if (AudioCtx) {
+          this.audioCtx = new AudioCtx();
+          this.oscillator = this.audioCtx.createOscillator();
+          const gain = this.audioCtx.createGain();
+          gain.gain.value = 0.00001;
+          this.oscillator.connect(gain);
+          gain.connect(this.audioCtx.destination);
+          this.oscillator.start();
+        }
+      } catch {}
+
+      this.isRunning = true;
+      console.log('[KeepAlive] Background MediaSession active and running');
       return true;
     } catch (err) {
-      console.warn('[KeepAlive] Failed to start background audio:', err);
+      console.warn('[KeepAlive] Failed to start background media:', err);
       return false;
     }
   }
@@ -51,24 +73,39 @@ class BackgroundAudioKeepAlive {
     if (!this.isRunning) return;
 
     try {
-      this.oscillator?.stop();
-      this.oscillator?.disconnect();
-      this.gainNode?.disconnect();
-      this.audioCtx?.close();
+      if (this.audioElement) {
+        this.audioElement.pause();
+        this.audioElement.currentTime = 0;
+      }
+      if (typeof navigator !== 'undefined' && 'mediaSession' in navigator) {
+        navigator.mediaSession.playbackState = 'none';
+      }
+      if (this.oscillator) {
+        this.oscillator.stop();
+        this.oscillator.disconnect();
+      }
+      if (this.audioCtx) {
+        this.audioCtx.close().catch(() => {});
+      }
     } catch {}
 
-    this.audioCtx = null;
+    this.audioElement = null;
     this.oscillator = null;
-    this.gainNode = null;
+    this.audioCtx = null;
     this.isRunning = false;
-    console.log('[KeepAlive] Background audio session stopped');
+    console.log('[KeepAlive] Background MediaSession stopped');
   }
 
-  public resumeIfSuspended(): void {
-    if (this.audioCtx && this.audioCtx.state === 'suspended') {
-      this.audioCtx.resume().catch(() => {});
+  public resumeIfPaused(): void {
+    if (this.isRunning) {
+      if (this.audioElement && this.audioElement.paused) {
+        this.audioElement.play().catch(() => {});
+      }
+      if (this.audioCtx && this.audioCtx.state === 'suspended') {
+        this.audioCtx.resume().catch(() => {});
+      }
     }
   }
 }
 
-export const backgroundAudio = new BackgroundAudioKeepAlive();
+export const backgroundMedia = new BackgroundMediaKeepAlive();

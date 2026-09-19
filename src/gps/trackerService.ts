@@ -2,7 +2,7 @@ import { GpsPoint } from '../types';
 import { enqueueGpsPoint, getQueuedGpsPoints, removeQueuedGpsPoints, getQueueCount } from '../offline/idbQueue';
 import { api } from '../api/client';
 import { CONFIG } from '../config';
-import { backgroundAudio } from './backgroundAudioKeepAlive';
+import { backgroundMedia } from './backgroundAudioKeepAlive';
 
 export interface TrackerDiagnostics {
   totalPointsCaptured: number;
@@ -37,6 +37,7 @@ class GpsTrackerService {
   private listeners: Set<TrackerListener> = new Set();
   private syncInProgress: boolean = false;
   private syncTimer: any = null;
+  private heartbeatTimer: any = null;
   private syncMessage: string | null = null;
   private wakeLockSentinel: any = null;
   private diagnostics: TrackerDiagnostics = {
@@ -120,14 +121,14 @@ class GpsTrackerService {
 
     if (document.visibilityState === 'visible') {
       console.log('[Tracker] App visible: re-syncing and refreshing location');
-      // Resume background audio context
-      backgroundAudio.resumeIfSuspended();
+      // Resume background media keep-alive
+      backgroundMedia.resumeIfPaused();
 
-      // Re-acquire wake lock if currently active
+      // Re-acquire wake lock if currently tracking
       if (this.status === 'ACTIVE' || this.status === 'OFFLINE') {
         this.requestWakeLock();
 
-        // Force an immediate GPS query so there is zero delay
+        // Immediate position fetch on wakeup
         if (typeof navigator !== 'undefined' && 'geolocation' in navigator) {
           navigator.geolocation.getCurrentPosition(
             (pos) => this.handleGpsSuccess(pos),
@@ -136,7 +137,7 @@ class GpsTrackerService {
           );
         }
 
-        // Flush any points saved in IndexedDB during sleep
+        // Flush queued offline points
         this.syncQueuedPoints();
       }
     }
@@ -199,8 +200,8 @@ class GpsTrackerService {
     // 1. Keep screen awake via Wake Lock API
     await this.requestWakeLock();
 
-    // 2. Start silent audio keep-alive to keep iOS Safari execution thread alive
-    backgroundAudio.start();
+    // 2. Start HTML5 Audio + MediaSession keep-alive (keeps iOS Safari WebKit alive on lock screen)
+    await backgroundMedia.start();
 
     try {
       if (this.isOnline) {
@@ -229,6 +230,27 @@ class GpsTrackerService {
       options
     );
 
+    // Continuous heartbeat every 4 seconds to guarantee the server receives updates
+    // even if the phone screen is locked or vehicle is stationary
+    this.heartbeatTimer = setInterval(async () => {
+      if (this.status === 'ACTIVE' && this.currentPoint && this.isOnline) {
+        const pointToSend: GpsPoint = {
+          ...this.currentPoint,
+          id: crypto.randomUUID(),
+          timestamp: Date.now(),
+        };
+        try {
+          await api.sendGpsPoint(pointToSend);
+          this.diagnostics.totalPointsSynced++;
+          this.diagnostics.lastSyncSuccess = Date.now();
+        } catch {
+          // If network dropped, enqueue locally
+          await enqueueGpsPoint(pointToSend);
+          await this.refreshQueueCount();
+        }
+      }
+    }, 4000);
+
     // Schedule regular background sync check
     this.syncTimer = setInterval(() => {
       if (this.isOnline && !this.syncInProgress) {
@@ -246,10 +268,14 @@ class GpsTrackerService {
       clearInterval(this.syncTimer);
       this.syncTimer = null;
     }
+    if (this.heartbeatTimer) {
+      clearInterval(this.heartbeatTimer);
+      this.heartbeatTimer = null;
+    }
 
-    // Release wake lock & background audio session
+    // Release wake lock & background media session
     await this.releaseWakeLock();
-    backgroundAudio.stop();
+    backgroundMedia.stop();
 
     this.status = 'STOPPED';
     this.syncMessage = 'Tracking stopped.';

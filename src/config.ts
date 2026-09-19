@@ -5,8 +5,8 @@ export const CONFIG = {
   TRACK_INTERVAL_MS: Number(import.meta.env.VITE_TRACK_INTERVAL_MS || 3000),
   DASHBOARD_POLL_INTERVAL_MS: Number(import.meta.env.VITE_DASHBOARD_POLL_INTERVAL_MS || 3000),
   ROUTE_DEVIATION_THRESHOLD_METERS: Number(import.meta.env.VITE_ROUTE_DEVIATION_THRESHOLD_METERS || 75),
-  STALE_AFTER_SECONDS: Number(import.meta.env.VITE_STALE_AFTER_SECONDS || 90),
-  DELAYED_AFTER_SECONDS: Number(import.meta.env.VITE_DELAYED_AFTER_SECONDS || 30),
+  STALE_AFTER_SECONDS: Number(import.meta.env.VITE_STALE_AFTER_SECONDS || 120),
+  DELAYED_AFTER_SECONDS: Number(import.meta.env.VITE_DELAYED_AFTER_SECONDS || 60),
   TRACKER_TOKEN: import.meta.env.VITE_TRACKER_TOKEN || 'cleanfleet-tracker-token',
   API_BASE_URL: import.meta.env.VITE_API_BASE_URL || '',
   // Free OpenFreeMap 3D Vector Style
