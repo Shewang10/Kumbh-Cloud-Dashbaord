@@ -44,12 +44,14 @@ export const MapLibre3D: React.FC<MapLibre3DProps> = ({
   const [is3DMode, setIs3DMode] = useState<boolean>(true);
   const [mapLoaded, setMapLoaded] = useState<boolean>(false);
 
-  // Update canvas cursor based on selectionMode
+  // Update canvas cursor and suspend camera-follow during point selection
   useEffect(() => {
     if (!mapRef.current) return;
     const canvas = mapRef.current.getCanvas();
     if (selectionMode) {
       canvas.style.cursor = 'crosshair';
+      // Never snap camera back to vehicle while user is actively placing waypoints
+      setFollowVehicle(false);
     } else {
       canvas.style.cursor = '';
     }
@@ -203,6 +205,17 @@ export const MapLibre3D: React.FC<MapLibre3DProps> = ({
     map.on('click', (e) => {
       if (onMapClickRef.current) {
         onMapClickRef.current({ lat: e.lngLat.lat, lng: e.lngLat.lng });
+      }
+    });
+
+    // When the user drags or zooms manually, disengage camera follow so the map does not snap back
+    map.on('dragstart', () => {
+      setFollowVehicle(false);
+    });
+
+    map.on('zoomstart', (e: any) => {
+      if (e.originalEvent) {
+        setFollowVehicle(false);
       }
     });
 
@@ -409,15 +422,15 @@ export const MapLibre3D: React.FC<MapLibre3DProps> = ({
       }
     }
 
-    // Follow vehicle camera
-    if (followVehicle) {
+    // Follow vehicle camera (only when enabled AND NOT in route selection mode)
+    if (followVehicle && !selectionMode) {
       map.easeTo({
         center: [latestGps.longitude, latestGps.latitude],
         duration: 1200,
         pitch: is3DMode ? CONFIG.DEFAULT_PITCH : 0,
       });
     }
-  }, [latestGps, vehicleStatus, isDeviated, followVehicle, is3DMode, mapLoaded]);
+  }, [latestGps, vehicleStatus, isDeviated, followVehicle, selectionMode, is3DMode, mapLoaded]);
 
   // Toggle 2D / 3D mode
   const toggle3D = useCallback(() => {
