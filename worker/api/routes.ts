@@ -28,7 +28,7 @@ async function fetchOsrmRoute(coords: [number, number][]): Promise<{
 
     const res = await fetch(url, {
       signal: controller.signal,
-      headers: { 'User-Agent': 'CleanFleet-Command-Center/1.0' },
+      headers: { 'User-Agent': 'Cloud-Command-Center/1.0' },
     });
     clearTimeout(timeout);
 

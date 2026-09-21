@@ -18,7 +18,16 @@ export default defineConfig({
   },
   build: {
     outDir: 'dist',
-    sourcemap: true,
+    sourcemap: false,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          maplibre: ['maplibre-gl'],
+          turf: ['@turf/turf'],
+          vendor: ['react', 'react-dom'],
+        },
+      },
+    },
   },
 });
 

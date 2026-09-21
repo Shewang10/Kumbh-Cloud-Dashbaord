@@ -85,28 +85,33 @@ export const TrackerPage: React.FC = () => {
     <div className="min-h-screen bg-[#080c14] text-slate-100 p-4 max-w-md mx-auto flex flex-col justify-between font-sans selection:bg-cyan-500 selection:text-black">
       {/* Top Header */}
       <div>
-        <header className="flex items-center justify-between py-2 border-b border-slate-800/80">
+        <header className="flex items-center justify-between py-2.5 border-b border-slate-800/80">
           <div>
             <div className="flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 shadow-cyan-glow"></span>
-              <h1 className="text-sm font-black tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500">
-                CLEANFLEET
+              <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 shadow-cyan-glow animate-pulse"></span>
+              <h1 className="text-xs font-black tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-sky-300 to-blue-500 font-mono">
+                CLOUD COMMAND CENTER
               </h1>
             </div>
-            <p className="text-[10px] font-mono tracking-widest text-slate-400 uppercase">
-              VEHICLE TRACKER
-            </p>
+            <div className="flex items-center gap-2 mt-0.5">
+              <span className="text-[9px] font-mono tracking-widest text-slate-400 uppercase">
+                MOBILE SATELLITE UPLINK
+              </span>
+              <span className="text-[8px] font-mono px-1 py-0.2 rounded bg-cyan-950/80 text-cyan-400 border border-cyan-800/50">
+                1575.42 MHz
+              </span>
+            </div>
           </div>
 
           <div className="flex items-center gap-2">
-            <span className="text-xs font-mono font-bold text-slate-300 bg-slate-900 border border-slate-700 px-2 py-1 rounded">
+            <span className="text-xs font-mono font-bold text-cyan-300 bg-slate-900/90 border border-cyan-500/30 px-2 py-1 rounded-md shadow-sm">
               {CONFIG.VEHICLE_ID}
             </span>
             <div className="p-1.5 rounded-lg bg-slate-900 border border-slate-800">
               {isOnline ? (
-                <Wifi size={16} className="text-emerald-400" />
+                <Wifi size={15} className="text-emerald-400" />
               ) : (
-                <WifiOff size={16} className="text-rose-400 animate-pulse" />
+                <WifiOff size={15} className="text-rose-400 animate-pulse" />
               )}
             </div>
           </div>
@@ -329,7 +334,7 @@ export const TrackerPage: React.FC = () => {
             className="w-full py-4 rounded-2xl bg-gradient-to-r from-cyan-400 via-cyan-500 to-blue-600 text-slate-950 font-black text-sm tracking-wider uppercase shadow-cyan-glow active:scale-[0.98] transition flex items-center justify-center gap-2"
           >
             <Play size={18} fill="currentColor" />
-            START TRACKING
+            ACTIVATE SATELLITE UPLINK
           </button>
         ) : (
           <button
@@ -338,7 +343,7 @@ export const TrackerPage: React.FC = () => {
             className="w-full py-4 rounded-2xl bg-rose-600/90 hover:bg-rose-600 text-white font-black text-sm tracking-wider uppercase shadow-rose-glow active:scale-[0.98] transition flex items-center justify-center gap-2"
           >
             <Square size={18} fill="currentColor" />
-            STOP TRACKING
+            TERMINATE SATELLITE UPLINK
           </button>
         )}
 

@@ -463,43 +463,43 @@ export const MapLibre3D: React.FC<MapLibre3DProps> = ({
     <div className="relative w-full h-full">
       <div ref={mapContainerRef} className="w-full h-full" />
 
-      {/* Floating Map Controls HUD */}
-      <div className="absolute top-4 left-4 z-10 flex flex-col gap-2">
+      {/* Floating Tactical Map Controls Deck */}
+      <div className="absolute bottom-5 left-5 z-10 flex flex-row items-center gap-2 font-mono">
         <button
           type="button"
           onClick={() => setFollowVehicle(!followVehicle)}
-          className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold backdrop-blur-md border transition-all shadow-lg ${
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-bold backdrop-blur-md border transition-all shadow-lg ${
             followVehicle
               ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/50 shadow-cyan-glow'
-              : 'bg-slate-900/80 text-slate-400 border-slate-700 hover:text-slate-200'
+              : 'bg-slate-900/80 text-slate-400 border-slate-800 hover:text-slate-200'
           }`}
           title="Camera Follow Vehicle Mode"
         >
-          {followVehicle ? <Eye size={15} /> : <EyeOff size={15} />}
-          <span>{followVehicle ? 'FOLLOWING VEHICLE' : 'FREE EXPLORE'}</span>
+          {followVehicle ? <Eye size={13} /> : <EyeOff size={13} />}
+          <span>{followVehicle ? 'CAM: LOCKED' : 'CAM: FREE'}</span>
         </button>
 
         <button
           type="button"
           onClick={toggle3D}
-          className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold backdrop-blur-md border transition-all shadow-lg ${
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-bold backdrop-blur-md border transition-all shadow-lg ${
             is3DMode
-              ? 'bg-purple-500/20 text-purple-300 border-purple-500/50'
-              : 'bg-slate-900/80 text-slate-400 border-slate-700 hover:text-slate-200'
+              ? 'bg-purple-500/20 text-purple-300 border-purple-500/50 shadow-purple-glow'
+              : 'bg-slate-900/80 text-slate-400 border-slate-800 hover:text-slate-200'
           }`}
           title="Toggle 3D Buildings & Pitch"
         >
-          <Layers size={15} />
-          <span>{is3DMode ? '3D BUILDINGS ON' : '2D OVERHEAD'}</span>
+          <Layers size={13} />
+          <span>{is3DMode ? '3D MESH' : '2D FLAT'}</span>
         </button>
 
         <button
           type="button"
           onClick={resetCamera}
-          className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold bg-slate-900/80 text-slate-400 border border-slate-700 hover:text-slate-200 backdrop-blur-md transition-all shadow-lg"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-bold bg-slate-900/80 text-slate-400 border border-slate-800 hover:text-slate-200 backdrop-blur-md transition-all shadow-lg"
           title="Recenter Camera on Vehicle"
         >
-          <RotateCcw size={15} />
+          <RotateCcw size={13} />
           <span>RECENTER</span>
         </button>
       </div>

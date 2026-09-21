@@ -141,11 +141,11 @@ export default {
         const spaRequest = new Request(new URL('/', request.url).toString(), request);
         return await env.ASSETS.fetch(spaRequest);
       } catch (err: any) {
-        return new Response('CleanFleet Command Center Frontend is deploying...', { status: 503 });
+        return new Response('Cloud Command Center Frontend is deploying...', { status: 503 });
       }
     }
 
-    return new Response('CleanFleet Command Center API Edge', { status: 200 });
+    return new Response('Cloud Command Center API Edge', { status: 200 });
   },
 };
 

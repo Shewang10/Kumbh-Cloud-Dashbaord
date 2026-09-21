@@ -31,9 +31,9 @@ class BackgroundMediaKeepAlive {
       // 2. Configure iOS Lock Screen MediaSession API
       if (typeof navigator !== 'undefined' && 'mediaSession' in navigator) {
         navigator.mediaSession.metadata = new MediaMetadata({
-          title: 'CleanFleet Active Trip',
-          artist: 'GPS Background Tracking Active',
-          album: 'CleanFleet Operations',
+          title: '[SAT-UPLINK ACTIVE]',
+          artist: 'Cloud Command Center',
+          album: 'Orbital GPS Stream • 1575.42 MHz',
         });
         navigator.mediaSession.playbackState = 'playing';
 
